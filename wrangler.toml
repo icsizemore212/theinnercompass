@@ -1,0 +1,10 @@
+name = "ebooksite-worker"
+main = "server.js"
+compatibility_date = "2025-08-13"
+
+[vars]
+PUBLIC_APP_URL = "https://your-site.com"
+PRODUCT_NAME = "Digital Minimalism and Intentional Living Ebook"
+EMAIL_FROM = "Digital Minimalism <noreply@your-site.com>"
+DOWNLOAD_SECRET = "replace-with-a-long-random-secret"
+EBOOK_FILE_URL = "https://your-site.com/files/digital-minimalism-ebook.pdf"

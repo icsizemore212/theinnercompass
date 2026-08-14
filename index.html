@@ -113,9 +113,17 @@
               Replace the placeholder checkout link below with your real payment provider when you're ready to go live.
             </p>
           </div>
+          <div class="purchase-form">
+            <label class="input-label" for="customer-name">Name</label>
+            <input id="customer-name" type="text" placeholder="Your name" />
+
+            <label class="input-label" for="customer-email">Email address</label>
+            <input id="customer-email" type="email" placeholder="you@example.com" required />
+          </div>
+
           <div class="purchase-actions">
-            <a class="btn btn-primary btn-large" href="https://buy.stripe.com/9B614odqP00E0Lhab93cc00" target="_blank" rel="noreferrer">Buy now for $9.99</a>
-            <p class="small-print">Secure checkout • Instant delivery • 30-day support window</p>
+            <button id="checkout-button" class="btn btn-primary btn-large" type="button">Buy now for $9.99</button>
+            <p id="purchase-status" class="small-print">Secure checkout • Instant delivery • 30-day support window</p>
           </div>
         </div>
       </section>
