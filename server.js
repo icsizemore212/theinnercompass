@@ -261,6 +261,10 @@ export default {
       }
     }
 
+    if (env.ASSETS) {
+      return env.ASSETS.fetch(request);
+    }
+
     return jsonResponse({ error: 'Route not found.' }, 404);
   },
 };
