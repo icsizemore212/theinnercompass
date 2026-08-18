@@ -126,6 +126,23 @@ async function sendDeliveryEmail(env, customerEmail, customerName, checkoutId) {
   return downloadUrl;
 }
 
+async function createPrivateDownloadUrl(env) {
+  const fileKey = env.EBOOK_FILE_KEY || 'digital-minimalism-ebook.pdf';
+
+  if (env.EBOOK_BUCKET && typeof env.EBOOK_BUCKET.getSignedUrl === 'function') {
+    return env.EBOOK_BUCKET.getSignedUrl(fileKey, {
+      method: 'GET',
+      expiresIn: 60 * 60 * 24,
+    });
+  }
+
+  if (env.EBOOK_FILE_URL) {
+    return env.EBOOK_FILE_URL;
+  }
+
+  return null;
+}
+
 async function createStripeCheckoutSession(env, body) {
   const { email, name } = body || {};
   if (!email) {
@@ -205,7 +222,7 @@ export default {
         return jsonResponse({ error: 'Invalid or expired download link.' }, 403);
       }
 
-      const fileUrl = env.EBOOK_FILE_URL;
+      const fileUrl = await createPrivateDownloadUrl(env);
       if (!fileUrl) {
         return jsonResponse({ error: 'No ebook file configured.' }, 500);
       }
