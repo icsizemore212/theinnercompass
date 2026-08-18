@@ -7,7 +7,6 @@ PUBLIC_APP_URL = "https://theinnercompass.digitalminimalism.workers.dev"
 PRODUCT_NAME = "Digital Minimalism and Intentional Living Ebook"
 EMAIL_FROM = "Digital Minimalism <icsizemore212@gmail.com>"
 EBOOK_FILE_KEY = "from-scattered-to-centered-a-guide-to-digital-minimalism-and-intentional-living.pdf"
-EBOOK_FILE_URL = "https://your-site.com/files/digital-minimalism-ebook.pdf"
 
 [[r2_buckets]]
 binding = "EBOOK_BUCKET"
