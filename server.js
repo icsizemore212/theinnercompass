@@ -65,6 +65,25 @@ async function verifyHmacSignature(secret, payload, signature) {
   return verified;
 }
 
+async function verifyHmacHexSignature(secret, payload, signature) {
+  if (!/^[\da-f]{64}$/i.test(signature)) return false;
+
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['verify']
+  );
+  const signatureBytes = Uint8Array.from(
+    signature.match(/.{2}/g),
+    (byte) => Number.parseInt(byte, 16)
+  );
+
+  return crypto.subtle.verify('HMAC', key, signatureBytes, encoder.encode(payload));
+}
+
 async function createDownloadToken(secret, email, checkoutId) {
   const exp = Date.now() + 1000 * 60 * 60 * 24 * 2;
   const payload = `${email}|${checkoutId}|${exp}`;
@@ -181,25 +200,26 @@ async function createStripeCheckoutSession(env, body) {
 }
 
 async function verifyStripeWebhook(rawBody, signature, secret) {
-  const signatureParts = {};
+  let timestamp;
+  const signatures = [];
   for (const part of (signature || '').split(',')) {
     const [key, value] = part.split('=');
-    if (key && value) {
-      signatureParts[key] = value;
-    }
+    if (key === 't' && value) timestamp = value;
+    if (key === 'v1' && value) signatures.push(value);
   }
 
-  if (!signatureParts.t || !signatureParts.v1) {
+  if (!timestamp || signatures.length === 0) {
     throw new Error('Missing Stripe signature headers.');
   }
 
-  const payload = `${signatureParts.t}.${rawBody}`;
-  const isValid = await verifyHmacSignature(secret, payload, signatureParts.v1);
-  if (!isValid) {
-    throw new Error('Stripe webhook signature invalid.');
+  const payload = `${timestamp}.${rawBody}`;
+  for (const candidate of signatures) {
+    if (await verifyHmacHexSignature(secret, payload, candidate)) {
+      return JSON.parse(rawBody);
+    }
   }
 
-  return JSON.parse(rawBody);
+  throw new Error('Stripe webhook signature invalid.');
 }
 
 export default {
