@@ -1,3 +1,5 @@
+import Stripe from 'stripe';
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -63,25 +65,6 @@ async function verifyHmacSignature(secret, payload, signature) {
   );
 
   return verified;
-}
-
-async function verifyHmacHexSignature(secret, payload, signature) {
-  if (!/^[\da-f]{64}$/i.test(signature)) return false;
-
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['verify']
-  );
-  const signatureBytes = Uint8Array.from(
-    signature.match(/.{2}/g),
-    (byte) => Number.parseInt(byte, 16)
-  );
-
-  return crypto.subtle.verify('HMAC', key, signatureBytes, encoder.encode(payload));
 }
 
 async function createDownloadToken(secret, email, checkoutId) {
@@ -199,27 +182,15 @@ async function createStripeCheckoutSession(env, body) {
   return jsonResponse({ url: data.url });
 }
 
-async function verifyStripeWebhook(rawBody, signature, secret) {
-  let timestamp;
-  const signatures = [];
-  for (const part of (signature || '').split(',')) {
-    const [key, value] = part.split('=');
-    if (key === 't' && value) timestamp = value;
-    if (key === 'v1' && value) signatures.push(value);
-  }
-
-  if (!timestamp || signatures.length === 0) {
-    throw new Error('Missing Stripe signature headers.');
-  }
-
-  const payload = `${timestamp}.${rawBody}`;
-  for (const candidate of signatures) {
-    if (await verifyHmacHexSignature(secret, payload, candidate)) {
-      return JSON.parse(rawBody);
-    }
-  }
-
-  throw new Error('Stripe webhook signature invalid.');
+async function verifyStripeWebhook(rawBody, signature, secret, apiKey) {
+  const stripe = new Stripe(apiKey);
+  return stripe.webhooks.constructEventAsync(
+    rawBody,
+    signature,
+    secret,
+    undefined,
+    Stripe.createSubtleCryptoProvider()
+  );
 }
 
 export default {
@@ -260,7 +231,12 @@ export default {
       const signature = request.headers.get('stripe-signature');
 
       try {
-        const event = await verifyStripeWebhook(rawBody, signature, env.STRIPE_WEBHOOK_SECRET);
+        const event = await verifyStripeWebhook(
+          rawBody,
+          signature,
+          env.STRIPE_WEBHOOK_SECRET,
+          env.STRIPE_SECRET_KEY
+        );
 
         if (event.type === 'checkout.session.completed') {
           const session = event.data.object;
