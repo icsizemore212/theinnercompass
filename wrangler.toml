@@ -5,7 +5,7 @@ compatibility_date = "2025-08-13"
 [vars]
 PUBLIC_APP_URL = "https://theinnercompass.digitalminimalism.workers.dev"
 PRODUCT_NAME = "Digital Minimalism and Intentional Living Ebook"
-EMAIL_FROM = "Digital Minimalism <icsizemore212@gmail.com>"
+EMAIL_FROM = "Digital Minimalism <onboarding@resend.dev>"
 EBOOK_FILE_KEY = "from-scattered-to-centered-a-guide-to-digital-minimalism-and-intentional-living.pdf"
 
 [[r2_buckets]]
