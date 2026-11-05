@@ -238,6 +238,52 @@ h2 {
   font-size: 0.95rem;
 }
 
+.success-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+
+.success-content {
+  width: min(680px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 4rem 0;
+  display: grid;
+  align-content: center;
+}
+
+.success-panel {
+  padding: clamp(1.5rem, 5vw, 3rem);
+}
+
+.success-mark {
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 1.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(105, 211, 255, 0.14);
+  color: var(--accent);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.success-panel h1 {
+  margin-bottom: 1rem;
+}
+
+.success-panel .lead {
+  margin-bottom: 0;
+}
+
+.success-note {
+  margin: 1.5rem 0 0;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+}
+
 .footer {
   padding: 1.5rem 0 2rem;
   color: var(--muted);

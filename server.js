@@ -153,7 +153,7 @@ async function createStripeCheckoutSession(env, body) {
 
   const params = new URLSearchParams({
     mode: 'payment',
-    success_url: `${env.PUBLIC_APP_URL}/?checkout=success`,
+    success_url: `${env.PUBLIC_APP_URL}/success.html`,
     cancel_url: `${env.PUBLIC_APP_URL}/?checkout=cancelled`,
     customer_email: email,
     'line_items[0][price_data][currency]': 'usd',
