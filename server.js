@@ -77,8 +77,11 @@ async function createDownloadToken(secret, email, checkoutId) {
 async function verifyDownloadToken(secret, token) {
   if (!token) return false;
 
-  const [encodedPayload, signature] = token.split('.');
-  if (!encodedPayload || !signature) return false;
+  const separatorIndex = token.lastIndexOf('.');
+  if (separatorIndex <= 0 || separatorIndex === token.length - 1) return false;
+
+  const encodedPayload = token.slice(0, separatorIndex);
+  const signature = token.slice(separatorIndex + 1);
 
   const payload = decodeURIComponent(encodedPayload);
   const [email, checkoutId, exp] = payload.split('|');
