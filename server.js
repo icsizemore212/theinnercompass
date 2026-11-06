@@ -77,21 +77,28 @@ async function createDownloadToken(secret, email, checkoutId) {
 async function verifyDownloadToken(secret, token) {
   if (!token) return false;
 
-  const separatorIndex = token.lastIndexOf('.');
-  if (separatorIndex <= 0 || separatorIndex === token.length - 1) return false;
+  try {
+    const separatorIndex = token.lastIndexOf('.');
+    if (separatorIndex <= 0 || separatorIndex === token.length - 1) return false;
 
-  const encodedPayload = token.slice(0, separatorIndex);
-  const signature = token.slice(separatorIndex + 1);
+    const encodedPayload = token.slice(0, separatorIndex);
+    const signature = token.slice(separatorIndex + 1);
 
-  const payload = decodeURIComponent(encodedPayload);
-  const [email, checkoutId, exp] = payload.split('|');
+    const payload = decodeURIComponent(encodedPayload);
+    const [email, checkoutId, exp] = payload.split('|');
 
-  if (!email || !checkoutId || !exp) return false;
+    if (!email || !checkoutId || !exp) return false;
 
-  const validSignature = await verifyHmacSignature(secret, payload, signature);
-  if (!validSignature) return false;
+    const expiration = Number(exp);
+    if (!Number.isFinite(expiration)) return false;
 
-  return Number(exp) > Date.now();
+    const validSignature = await verifyHmacSignature(secret, payload, signature);
+    if (!validSignature) return false;
+
+    return expiration > Date.now();
+  } catch {
+    return false;
+  }
 }
 
 async function sendDeliveryEmail(env, customerEmail, customerName, checkoutId) {
@@ -99,7 +106,12 @@ async function sendDeliveryEmail(env, customerEmail, customerName, checkoutId) {
     throw new Error('RESEND_API_KEY is not configured.');
   }
 
-  const downloadToken = await createDownloadToken(env.DOWNLOAD_SECRET || 'dev-secret', customerEmail, checkoutId);
+  if (!env.DOWNLOAD_SECRET) {
+    console.error('DOWNLOAD_SECRET is not configured; cannot create download token.');
+    throw new Error('Download configuration is unavailable.');
+  }
+
+  const downloadToken = await createDownloadToken(env.DOWNLOAD_SECRET, customerEmail, checkoutId);
   const downloadUrl = `${env.PUBLIC_APP_URL}/download?token=${encodeURIComponent(downloadToken)}`;
 
   const response = await fetch('https://api.resend.com/emails', {
@@ -129,23 +141,6 @@ async function sendDeliveryEmail(env, customerEmail, customerName, checkoutId) {
   }
 
   return downloadUrl;
-}
-
-async function createPrivateDownloadUrl(env) {
-  const fileKey = env.EBOOK_FILE_KEY || 'digital-minimalism-ebook.pdf';
-
-  if (env.EBOOK_BUCKET && typeof env.EBOOK_BUCKET.getSignedUrl === 'function') {
-    return env.EBOOK_BUCKET.getSignedUrl(fileKey, {
-      method: 'GET',
-      expiresIn: 60 * 60 * 24,
-    });
-  }
-
-  if (env.EBOOK_FILE_URL) {
-    return env.EBOOK_FILE_URL;
-  }
-
-  return null;
 }
 
 async function createStripeCheckoutSession(env, body) {
@@ -209,19 +204,52 @@ export default {
     }
 
     if (url.pathname === '/download') {
+      if (!env.DOWNLOAD_SECRET) {
+        console.error('DOWNLOAD_SECRET is not configured; rejecting download request.');
+        return jsonResponse({ error: 'Download service is not configured.' }, 500);
+      }
+
       const token = url.searchParams.get('token');
-      const isValid = await verifyDownloadToken(env.DOWNLOAD_SECRET || 'dev-secret', token);
+      let isValid = false;
+      try {
+        isValid = await verifyDownloadToken(env.DOWNLOAD_SECRET, token);
+      } catch {
+        isValid = false;
+      }
 
       if (!isValid) {
         return jsonResponse({ error: 'Invalid or expired download link.' }, 403);
       }
 
-      const fileUrl = await createPrivateDownloadUrl(env);
-      if (!fileUrl) {
-        return jsonResponse({ error: 'No ebook file configured.' }, 500);
+      if (!env.EBOOK_BUCKET || !env.EBOOK_FILE_KEY) {
+        return jsonResponse({ error: 'Ebook storage is not configured.' }, 500);
       }
 
-      return Response.redirect(fileUrl, 302);
+      let ebook;
+      try {
+        ebook = await env.EBOOK_BUCKET.get(env.EBOOK_FILE_KEY);
+      } catch {
+        return jsonResponse({ error: 'Unable to retrieve ebook from storage.' }, 500);
+      }
+
+      if (!ebook) {
+        return jsonResponse({ error: 'Ebook file not found.' }, 404);
+      }
+
+      if (!ebook.body) {
+        return jsonResponse({ error: 'Ebook file is unavailable.' }, 500);
+      }
+
+      const headers = new Headers({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'attachment; filename="Scattered-to-Centered.pdf"',
+        'Cache-Control': 'private, no-store',
+      });
+      if (typeof ebook.size === 'number') {
+        headers.set('Content-Length', String(ebook.size));
+      }
+
+      return new Response(ebook.body, { headers });
     }
 
     if (url.pathname === '/create-checkout-session' && request.method === 'POST') {
