@@ -271,15 +271,17 @@ export default {
 
         if (event.type === 'checkout.session.completed') {
           const session = event.data.object;
-          const customerEmail = session.customer_details?.email || session.customer_email;
-          const customerName = session.metadata?.customer_name || 'Customer';
-          const checkoutId = session.id;
+          if (session.payment_status === 'paid') {
+            const customerEmail = session.customer_details?.email || session.customer_email;
+            const customerName = session.metadata?.customer_name || 'Customer';
+            const checkoutId = session.id;
 
-          if (!customerEmail) {
-            return jsonResponse({ error: 'Customer email missing from checkout session.' }, 400);
+            if (!customerEmail) {
+              return jsonResponse({ error: 'Customer email missing from checkout session.' }, 400);
+            }
+
+            await sendDeliveryEmail(env, customerEmail, customerName, checkoutId);
           }
-
-          await sendDeliveryEmail(env, customerEmail, customerName, checkoutId);
         }
 
         return jsonResponse({ received: true });
